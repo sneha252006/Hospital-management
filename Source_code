@@ -1,0 +1,237 @@
+# ================= HOSPITAL MANAGEMENT SYSTEM (FINAL PRO) =================
+
+from openpyxl import Workbook, load_workbook
+import os
+import datetime
+
+file_name = "hospital.xlsx"
+
+# -------- CREATE EXCEL --------
+if not os.path.exists(file_name):
+    wb = Workbook()
+
+    ws1 = wb.active
+    ws1.title = "Patients"
+    ws1.append(["ID","Name","Age","Gender","Contact","Disease","Ward","Date","Status"])
+
+    ws2 = wb.create_sheet("Doctors")
+    ws2.append(["ID","Name","Specialization","Fee"])
+
+    ws2.append([101,"Dr. Anjali Mehta","Cardiologist",800])
+    ws2.append([102,"Dr. Ravi Sharma","Neurologist",900])
+    ws2.append([103,"Dr. Priya Nair","Orthopedic",700])
+    ws2.append([104,"Dr. Suresh Iyer","General Physician",500])
+    ws2.append([105,"Dr. Kavita Desai","Dermatologist",600])
+
+    ws3 = wb.create_sheet("Appointments")
+    ws3.append(["ID","PatientID","PatientName","Doctor","Date","Time","Reason","Status"])
+
+    # 🔥 UPDATED BILL HEADERS
+    ws4 = wb.create_sheet("Bills")
+    ws4.append(["ID","PatientID","Name","Days","Fare/Day","Stay Total","Total","Date"])
+
+    wb.save(file_name)
+
+# -------- HELPER --------
+def get_date():
+    return datetime.date.today().strftime("%d-%m-%Y")
+
+def id_exists(sheet, col, value):
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        if row[col] == value:
+            return True
+    return False
+
+# -------- PATIENT --------
+def add_patient():
+    wb = load_workbook(file_name)
+    ws = wb["Patients"]
+
+    pid = int(input("Enter ID: "))
+    if id_exists(ws,0,pid):
+        print("❌ ID exists\n"); return
+
+    ws.append([
+        pid,
+        input("Name: ").title(),
+        int(input("Age: ")),
+        input("Gender: "),
+        input("Contact: "),
+        input("Disease: "),
+        input("Ward: "),
+        get_date(),
+        "Admitted"
+    ])
+
+    wb.save(file_name)
+    print("✅ Patient added\n")
+
+def view_patients():
+    ws = load_workbook(file_name)["Patients"]
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        print(r)
+    print()
+
+# -------- DOCTOR --------
+def view_doctors():
+    ws = load_workbook(file_name)["Doctors"]
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        print(r)
+    print()
+
+def add_doctor():
+    wb = load_workbook(file_name)
+    ws = wb["Doctors"]
+
+    did = int(input("Enter Doctor ID: "))
+    if id_exists(ws,0,did):
+        print("❌ ID exists\n"); return
+
+    ws.append([
+        did,
+        input("Name: ").title(),
+        input("Specialization: ").title(),
+        int(input("Fee: "))
+    ])
+
+    wb.save(file_name)
+    print("✅ Doctor added\n")
+
+def delete_doctor():
+    wb = load_workbook(file_name)
+    ws = wb["Doctors"]
+
+    did = int(input("Enter Doctor ID: "))
+    for i,row in enumerate(ws.iter_rows(min_row=2),2):
+        if row[0].value == did:
+            ws.delete_rows(i)
+            wb.save(file_name)
+            print("✅ Deleted\n")
+            return
+
+    print("❌ Not found\n")
+
+def update_doctor():
+    wb = load_workbook(file_name)
+    ws = wb["Doctors"]
+
+    did = int(input("Enter Doctor ID: "))
+    for row in ws.iter_rows(min_row=2):
+        if row[0].value == did:
+            row[1].value = input("New Name: ").title()
+            row[2].value = input("New Specialization: ").title()
+            row[3].value = int(input("New Fee: "))
+            wb.save(file_name)
+            print("✅ Updated\n")
+            return
+
+    print("❌ Not found\n")
+
+# -------- APPOINTMENT --------
+def book_appointment():
+    wb = load_workbook(file_name)
+    ws = wb["Appointments"]
+
+    pid = int(input("Patient ID: "))
+    pname = input("Patient Name: ")
+
+    view_doctors()
+    did = int(input("Doctor ID: "))
+
+    doctor = None
+    for r in wb["Doctors"].iter_rows(min_row=2, values_only=True):
+        if r[0] == did:
+            doctor = r[1]
+
+    if not doctor:
+        print("❌ Invalid doctor\n"); return
+
+    ws.append([
+        len(ws["A"]),
+        pid,
+        pname,
+        doctor,
+        input("Date: "),
+        input("Time: "),
+        input("Reason: "),
+        "Scheduled"
+    ])
+
+    wb.save(file_name)
+    print("✅ Appointment booked\n")
+
+def view_appointments():
+    ws = load_workbook(file_name)["Appointments"]
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        print(r)
+    print()
+
+# -------- BILL (UPDATED) --------
+def billing():
+    wb = load_workbook(file_name)
+    ws = wb["Bills"]
+
+    pid = int(input("Patient ID: "))
+    name = input("Name: ")
+
+    # 🔥 NEW INPUTS
+    days = int(input("Enter Days Stayed: "))
+    fare = float(input("Enter Fare per Day: "))
+
+    stay_total = days * fare
+
+    print(f"Stay Charges = {days} x {fare} = {stay_total}")
+
+    extra = float(input("Extra Charges (if any): ") or 0)
+
+    total = stay_total + extra
+
+    # SAVE TO EXCEL
+    ws.append([
+        len(ws["A"]),
+        pid,
+        name,
+        days,
+        fare,
+        stay_total,
+        total,
+        get_date()
+    ])
+
+    wb.save(file_name)
+
+    print("\n💰 BILL DETAILS")
+    print(f"Stay Charges : ₹{stay_total}")
+    print(f"Extra Charges: ₹{extra}")
+    print(f"TOTAL        : ₹{total}\n")
+
+# -------- MAIN --------
+def main():
+    while True:
+        print("===== HOSPITAL SYSTEM =====")
+        print("1 Add Patient")
+        print("2 View Patients")
+        print("3 View Doctors")
+        print("4 Add Doctor")
+        print("5 Delete Doctor")
+        print("6 Update Doctor")
+        print("7 Book Appointment")
+        print("8 View Appointments")
+        print("9 Billing")
+        print("10 Exit")
+
+        ch = int(input("Choice: "))
+
+        if ch==1: add_patient()
+        elif ch==2: view_patients()
+        elif ch==3: view_doctors()
+        elif ch==4: add_doctor()
+        elif ch==5: delete_doctor()
+        elif ch==6: update_doctor()
+        elif ch==7: book_appointment()
+        elif ch==8: view_appointments()
+        elif ch==9: billing()
+        elif ch==10: break
+        else: print("❌ Invalid\n")
+
+main()
